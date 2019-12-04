@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: dd78b02dd5b9e5035941aa0f87ff8d7bdf661ac8ea8ef6456e3e6c94ebe7198c
+-- hash: c0e35681e96e0c8c96fff14165d4ca5a20a29bcac2dd5258acee46c5d296df98
 
 name:           aoc2019
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       Days.Day1
       Days.Day2
       Days.Day3
+      Days.Day4
       Switcher
   other-modules:
       Paths_aoc2019
