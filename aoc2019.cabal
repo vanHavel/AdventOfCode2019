@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c0e35681e96e0c8c96fff14165d4ca5a20a29bcac2dd5258acee46c5d296df98
+-- hash: d44bb1d8b50ae32820ca35e77458ae75e288d22e7fe1b8d543e7c9cd7fb7b102
 
 name:           aoc2019
 version:        0.1.0.0
@@ -31,6 +31,7 @@ library
       Days.Day2
       Days.Day3
       Days.Day4
+      Days.Day5
       Switcher
   other-modules:
       Paths_aoc2019
@@ -40,6 +41,7 @@ library
       array
     , base >=4.7 && <5
     , containers
+    , mtl
     , split
   default-language: Haskell2010
 
@@ -55,6 +57,7 @@ executable aoc2019-exe
     , array
     , base >=4.7 && <5
     , containers
+    , mtl
     , split
   default-language: Haskell2010
 
@@ -71,5 +74,6 @@ test-suite aoc2019-test
     , array
     , base >=4.7 && <5
     , containers
+    , mtl
     , split
   default-language: Haskell2010
