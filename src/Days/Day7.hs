@@ -23,7 +23,7 @@ paramKinds = Map.fromList [
 
 run :: String -> String 
 run s = 
-    let ints = map read $ splitOn "," s :: [Int]
+    let ints = map read $ splitOn "," s
         arr = listArray (0, pred $ length ints) ints
         perms1 = permutations [0, 1, 2, 3, 4]
         outputs1 = map (runAmps arr 0) perms1
