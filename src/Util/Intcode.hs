@@ -1,4 +1,4 @@
-module Util.Intcode(runProgram) where
+module Util.Intcode(runProgram, runWithDump) where
 
 import Control.Monad.ST
 import Data.Array
@@ -25,7 +25,14 @@ paramKinds = Map.fromList [
 runProgram :: Array Int Int -> [Int] -> [Int] 
 runProgram code input = runST $ do 
     stCode <- thaw code 
-    compute stCode 0 0 input
+    snd <$> compute stCode 0 0 input
+
+runWithDump :: Array Int Int -> [Int] -> (Array Int Int, [Int])
+runWithDump code input = runST $ do 
+    stCode <- thaw code 
+    (dump, output) <- compute stCode 0 0 input 
+    frozen <- freeze dump
+    return (frozen, output)
 
 readParams :: STArray s Int Int -> Int -> Int -> Int -> [Access] -> ST s [Int]
 readParams _ _ _ _ [] = return []
@@ -38,7 +45,7 @@ readParams code pos base mods (kind:kinds) = do
     rest <- readParams code (succ pos) base (mods `div` 10) kinds
     return $ param:rest
 
-compute :: STArray s Int Int -> Int -> Int -> [Int] -> ST s [Int]
+compute :: STArray s Int Int -> Int -> Int -> [Int] -> ST s (STArray s Int Int, [Int])
 compute code pos base input = do 
     op <- readArray code pos
     let opcode = op `mod` 100
@@ -55,7 +62,7 @@ compute code pos base input = do
         3 -> let [target] = params in do 
             writeArray code target (head input) 
             compute code (pos + 2) base (tail input)
-        4 -> let [value] = params in (:) value <$> compute code (pos + 2) base input
+        4 -> let [value] = params in fmap (value :) <$> compute code (pos + 2) base input
         5 -> let [condition, jump] = params in 
                 if condition > 0
                     then compute code jump base input 
@@ -71,4 +78,4 @@ compute code pos base input = do
             writeArray code target $ if p1 == p2 then 1 else 0
             compute code (pos + 4) base input
         9 -> let [offset] = params in compute code (pos + 2) (base + offset) input
-        99 -> return []
+        99 -> return (code, [])
