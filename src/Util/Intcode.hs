@@ -1,8 +1,6 @@
-module Util.Intcode(runProgram, runWithDump) where
+module Util.Intcode(runProgram) where
 
-import Control.Monad.ST
 import Data.Array
-import Data.Array.ST 
 import Data.List.Split
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -25,47 +23,40 @@ paramKinds = Map.fromList [
     ]
 
 runProgram :: Array Int Int -> [Int] -> [Int] 
-runProgram code input = runST $ do 
-    stCode <- thaw code 
-    compute stCode 0 0 input
+runProgram code input = compute code 0 0 input
 
-runWithDump :: Array Int Int -> [Int] -> (Array Int Int, [Int])
-runWithDump code input = runST $ do 
-    stCode <- thaw code 
-    (dump, output) <- computeWithDump stCode 0 0 input 
-    frozen <- freeze dump
-    return (frozen, output)
+--runWithDump :: Array Int Int -> [Int] -> (Array Int Int, [Int])
+--runWithDump code input = compute code 0 0 input
 
-readParams :: STArray s Int Int -> Int -> Int -> Int -> [Access] -> ST s [Int]
-readParams _ _ _ _ [] = return []
-readParams code pos base mods (kind:kinds) = do 
-    param <- case (mods `mod` 10, kind) of
-        (0, Read) -> readArray code pos >>= readArray code
-        (2, Read) -> readArray code pos >>= readArray code . (+ base)
-        (2, Write) -> (+ base) <$> readArray code pos
-        _ -> readArray code pos 
-    rest <- readParams code (succ pos) base (mods `div` 10) kinds
-    return $ param:rest
+readParams :: Array Int Int -> Int -> Int -> Int -> [Access] -> [Int]
+readParams _ _ _ _ [] = []
+readParams code pos base mods (kind:kinds) = 
+    let param = case (mods `mod` 10, kind) of
+                    (0, Read) -> code ! (code ! pos)
+                    (2, Read) -> code ! ((code ! pos) + base)
+                    (2, Write) -> (code ! pos) + base
+                    _ -> code ! pos
+        rest = readParams code (succ pos) base (mods `div` 10) kinds
+    in param:rest
 
-compute :: STArray s Int Int -> Int -> Int -> [Int] -> ST s [Int]
-compute code pos base input = do 
-    op <- readArray code pos
-    let opcode = op `mod` 100
+compute :: Array Int Int -> Int -> Int -> [Int] -> [Int]
+compute code pos base input = 
+    let op = code ! pos
+        opcode = op `mod` 100
         mods = op `div` 100
         kinds = paramKinds Map.! opcode
-    params <- readParams code (succ pos) base mods kinds
-    trace ("opcode " ++ show opcode) $ return []
-    case opcode of 
-        1 -> let [p1, p2, target] = params in do 
-            writeArray code target (p1 + p2)
-            compute code (pos + 4) base input
-        2 -> let [p1, p2, target] = params in do 
-            writeArray code target (p1 * p2) 
-            compute code (pos + 4) base input
-        3 -> let [target] = params in do 
-            writeArray code target (head input) 
-            compute code (pos + 2) base (tail input)
-        4 -> let [value] = params in (value :) <$> compute code (pos + 2) base input
+        params = readParams code (succ pos) base mods kinds
+    in case opcode of 
+        1 -> let [p1, p2, target] = params
+                 code' = code // [(target, p1 + p2)]
+             in compute code' (pos + 4) base input
+        2 -> let [p1, p2, target] = params
+                 code' = code // [(target, p1 * p2)]
+             in compute code' (pos + 4) base input
+        3 -> let [target] = params
+                 code' = code // [(target, head input)]
+             in compute code' (pos + 2) base (tail input)
+        4 -> let [value] = params in (value :) $ compute code (pos + 2) base input
         5 -> let [condition, jump] = params in 
                 if condition > 0
                     then compute code jump base input 
@@ -74,16 +65,11 @@ compute code pos base input = do
                 if condition == 0
                     then compute code jump base input 
                     else compute code (pos + 3) base input
-        7 -> let [p1, p2, target] = params in do
-                writeArray code target $ if p1 < p2 then 1 else 0
-                compute code (pos + 4) base input
-        8 -> let [p1, p2, target] = params in do
-            writeArray code target $ if p1 == p2 then 1 else 0
-            compute code (pos + 4) base input
+        7 -> let [p1, p2, target] = params 
+                 code' = code // [(target, if p1 < p2 then 1 else 0)]
+             in compute code' (pos + 4) base input
+        8 -> let [p1, p2, target] = params 
+                 code' = code // [(target, if p1 == p2 then 1 else 0)]
+             in compute code' (pos + 4) base input
         9 -> let [offset] = params in compute code (pos + 2) (base + offset) input
-        99 -> return []
-
-computeWithDump :: STArray s Int Int -> Int -> Int -> [Int] -> ST s (STArray s Int Int, [Int])
-computeWithDump code pos base input = do 
-    output <- compute code pos base input
-    return (code, output)
+        99 -> []

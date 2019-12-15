@@ -8,15 +8,7 @@ import Data.List.Split
 
 type Position = (Int, Int)
 
-run :: String -> String
-run s = 
-    let ints = (map read $ splitOn "," s) ++ [0 | _ <- [1..1000]]
-        code = listArray (0, pred $ length ints) ints
-        (dump, output) = runWithDump code []
-        screen = render output
-        blockCount = length $ Map.filter (==2) screen
-        score = lastScore $ runProgram (hack dump) (repeat 0)
-    in show blockCount ++ ", " ++ show score
+run = id
 
 render :: [Int] -> Map Position Int
 render [] = Map.empty
