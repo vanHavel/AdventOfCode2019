@@ -8,8 +8,6 @@ import Data.List.Split
 import Data.Map(Map)
 import qualified Data.Map as Map
 
-import Debug.Trace
-
 type Position = (Int, Int)
 data Direction = N | E | S | W 
     deriving (Eq, Show)
@@ -46,10 +44,9 @@ run s =
     let ints = (map read $ splitOn "," s) ++ [0 | _ <- [1..1000]]
         code = listArray (0, pred $ length ints) ints
         state = explore code 
-        --dist1 = distanceToGoal $ grid state
-        --dist2 = farthestDistance $ grid state
-    --in show dist1 ++ ", " ++ show dist2
-    in (render $ grid state) ++ "\n" ++ (show $ length $ history state)
+        dist1 = distanceToGoal $ grid state
+        dist2 = farthestDistance $ grid state
+    in show dist1 ++ ", " ++ show dist2
 
 explore :: Array Int Int -> SearchState
 explore arr = finalState
@@ -76,8 +73,8 @@ makeMove xs = do
             case hist of 
                 [] -> return []
                 (backDir:rest) -> do
-                    modify (\s -> s{direction = backDir, history = rest})
-                    (:) (toInt backDir) <$> exploreStateful xs False
+                    modify (\s -> s{direction = turnAround backDir, history = rest})
+                    (:) (toInt $ turnAround backDir) <$> exploreStateful xs False
         Just nextDir -> do 
             modify (\s -> s{direction = nextDir})
             (:) (toInt nextDir) <$> exploreStateful xs True
@@ -104,7 +101,7 @@ render grid =
     in unlines chars
 
 distanceToGoal :: Map Position Char -> Int 
-distanceToGoal grid = (distances grid) Map.! (goalPos grid)
+distanceToGoal grid = (distances grid) Map.! (0, 0)
 
 farthestDistance :: Map Position Char -> Int 
 farthestDistance = maximum . map snd . Map.toList . distances
