@@ -7,6 +7,8 @@ import Data.List.Split
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Debug.Trace
+
 data Access = Read | Write
 paramKinds :: Map Int [Access]
 paramKinds = Map.fromList [
@@ -25,12 +27,12 @@ paramKinds = Map.fromList [
 runProgram :: Array Int Int -> [Int] -> [Int] 
 runProgram code input = runST $ do 
     stCode <- thaw code 
-    snd <$> compute stCode 0 0 input
+    compute stCode 0 0 input
 
 runWithDump :: Array Int Int -> [Int] -> (Array Int Int, [Int])
 runWithDump code input = runST $ do 
     stCode <- thaw code 
-    (dump, output) <- compute stCode 0 0 input 
+    (dump, output) <- computeWithDump stCode 0 0 input 
     frozen <- freeze dump
     return (frozen, output)
 
@@ -45,13 +47,14 @@ readParams code pos base mods (kind:kinds) = do
     rest <- readParams code (succ pos) base (mods `div` 10) kinds
     return $ param:rest
 
-compute :: STArray s Int Int -> Int -> Int -> [Int] -> ST s (STArray s Int Int, [Int])
+compute :: STArray s Int Int -> Int -> Int -> [Int] -> ST s [Int]
 compute code pos base input = do 
     op <- readArray code pos
     let opcode = op `mod` 100
         mods = op `div` 100
         kinds = paramKinds Map.! opcode
     params <- readParams code (succ pos) base mods kinds
+    trace ("opcode " ++ show opcode) $ return []
     case opcode of 
         1 -> let [p1, p2, target] = params in do 
             writeArray code target (p1 + p2)
@@ -62,7 +65,7 @@ compute code pos base input = do
         3 -> let [target] = params in do 
             writeArray code target (head input) 
             compute code (pos + 2) base (tail input)
-        4 -> let [value] = params in fmap (value :) <$> compute code (pos + 2) base input
+        4 -> let [value] = params in (value :) <$> compute code (pos + 2) base input
         5 -> let [condition, jump] = params in 
                 if condition > 0
                     then compute code jump base input 
@@ -78,4 +81,9 @@ compute code pos base input = do
             writeArray code target $ if p1 == p2 then 1 else 0
             compute code (pos + 4) base input
         9 -> let [offset] = params in compute code (pos + 2) (base + offset) input
-        99 -> return (code, [])
+        99 -> return []
+
+computeWithDump :: STArray s Int Int -> Int -> Int -> [Int] -> ST s (STArray s Int Int, [Int])
+computeWithDump code pos base input = do 
+    output <- compute code pos base input
+    return (code, output)
