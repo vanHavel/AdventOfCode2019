@@ -41,7 +41,7 @@ data SearchState = SearchState {
 
 run :: String -> String 
 run s = 
-    let ints = (map read $ splitOn "," s) ++ [0 | _ <- [1..1000]]
+    let ints = (map read $ splitOn "," s)
         code = listArray (0, pred $ length ints) ints
         state = explore code 
         dist1 = distanceToGoal $ grid state

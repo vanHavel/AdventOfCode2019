@@ -15,7 +15,7 @@ data Direction = N | E | S | W
 
 run :: String -> String
 run s = 
-    let ints = (map read $ splitOn "," s) ++ [0 | _ <- [1..1000]]
+    let ints = (map read $ splitOn "," s)
         code = listArray (0, pred $ length ints) ints
         blackGrid = runRobot code 0
         whiteGrid = runRobot code 1

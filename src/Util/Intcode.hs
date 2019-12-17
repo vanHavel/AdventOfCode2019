@@ -1,4 +1,4 @@
-module Util.Intcode(runProgram, runWithDump) where
+module Util.Intcode(runProgram) where
 
 import Data.Array
 import Data.List.Split
@@ -23,38 +23,35 @@ paramKinds = Map.fromList [
     ]
 
 runProgram :: Array Int Int -> [Int] -> [Int] 
-runProgram code input = compute code 0 0 input
+runProgram code input = compute (Map.fromList $ assocs code) 0 0 input
 
-runWithDump :: Array Int Int -> [Int] -> (Array Int Int, [Int])
-runWithDump code input = computeAndDump code 0 0 input
-
-readParams :: Array Int Int -> Int -> Int -> Int -> [Access] -> [Int]
+readParams :: Map Int Int -> Int -> Int -> Int -> [Access] -> [Int]
 readParams _ _ _ _ [] = []
 readParams code pos base mods (kind:kinds) = 
     let param = case (mods `mod` 10, kind) of
-                    (0, Read) -> code ! (code ! pos)
-                    (2, Read) -> code ! ((code ! pos) + base)
-                    (2, Write) -> (code ! pos) + base
-                    _ -> code ! pos
+                    (0, Read) -> Map.findWithDefault 0 (Map.findWithDefault 0 pos code) code
+                    (2, Read) -> Map.findWithDefault 0 ((Map.findWithDefault 0 pos code) + base) code
+                    (2, Write) -> (Map.findWithDefault 0 pos code) + base
+                    _ -> Map.findWithDefault 0 pos code
         rest = readParams code (succ pos) base (mods `div` 10) kinds
     in param:rest
 
-compute :: Array Int Int -> Int -> Int -> [Int] -> [Int]
+compute :: Map Int Int -> Int -> Int -> [Int] -> [Int]
 compute code pos base input = 
-    let op = code ! pos
+    let op = code Map.! pos
         opcode = op `mod` 100
         mods = op `div` 100
         kinds = paramKinds Map.! opcode
         params = readParams code (succ pos) base mods kinds
     in case opcode of 
         1 -> let [p1, p2, target] = params
-                 code' = code // [(target, p1 + p2)]
+                 code' = Map.insert target (p1 + p2) code
              in compute code' (pos + 4) base input
         2 -> let [p1, p2, target] = params
-                 code' = code // [(target, p1 * p2)]
+                 code' = Map.insert target (p1 * p2) code
              in compute code' (pos + 4) base input
         3 -> let [target] = params
-                 code' = code // [(target, head input)]
+                 code' = Map.insert target (head input) code
              in compute code' (pos + 2) base (tail input)
         4 -> let [value] = params in (value :) $ compute code (pos + 2) base input
         5 -> let [condition, jump] = params in 
@@ -66,45 +63,10 @@ compute code pos base input =
                     then compute code jump base input 
                     else compute code (pos + 3) base input
         7 -> let [p1, p2, target] = params 
-                 code' = code // [(target, if p1 < p2 then 1 else 0)]
+                 code' = Map.insert target (if p1 < p2 then 1 else 0) code
              in compute code' (pos + 4) base input
         8 -> let [p1, p2, target] = params 
-                 code' = code // [(target, if p1 == p2 then 1 else 0)]
+                 code' = Map.insert target (if p1 == p2 then 1 else 0) code
              in compute code' (pos + 4) base input
         9 -> let [offset] = params in compute code (pos + 2) (base + offset) input
         99 -> []
-
-computeAndDump :: Array Int Int -> Int -> Int -> [Int] -> (Array Int Int, [Int])
-computeAndDump code pos base input = 
-    let op = code ! pos
-        opcode = op `mod` 100
-        mods = op `div` 100
-        kinds = paramKinds Map.! opcode
-        params = readParams code (succ pos) base mods kinds
-    in case opcode of 
-        1 -> let [p1, p2, target] = params
-                 code' = code // [(target, p1 + p2)]
-             in computeAndDump code' (pos + 4) base input
-        2 -> let [p1, p2, target] = params
-                 code' = code // [(target, p1 * p2)]
-             in computeAndDump code' (pos + 4) base input
-        3 -> let [target] = params
-                 code' = code // [(target, head input)]
-             in computeAndDump code' (pos + 2) base (tail input)
-        4 -> let [value] = params in fmap (value :) $ computeAndDump code (pos + 2) base input
-        5 -> let [condition, jump] = params in 
-                if condition > 0
-                    then computeAndDump code jump base input 
-                    else computeAndDump code (pos + 3) base input
-        6 -> let [condition, jump] = params in 
-                if condition == 0
-                    then computeAndDump code jump base input 
-                    else computeAndDump code (pos + 3) base input
-        7 -> let [p1, p2, target] = params 
-                 code' = code // [(target, if p1 < p2 then 1 else 0)]
-             in computeAndDump code' (pos + 4) base input
-        8 -> let [p1, p2, target] = params 
-                 code' = code // [(target, if p1 == p2 then 1 else 0)]
-             in computeAndDump code' (pos + 4) base input
-        9 -> let [offset] = params in computeAndDump code (pos + 2) (base + offset) input
-        99 -> (code, [])
