@@ -38,7 +38,7 @@ readParams code pos base mods (kind:kinds) =
 
 compute :: Map Int Int -> Int -> Int -> [Int] -> [Int]
 compute code pos base input = 
-    let op = code Map.! pos
+    let op = Map.findWithDefault 0 pos code
         opcode = op `mod` 100
         mods = op `div` 100
         kinds = paramKinds Map.! opcode
