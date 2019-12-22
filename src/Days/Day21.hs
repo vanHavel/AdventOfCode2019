@@ -8,13 +8,23 @@ import Data.List.Split
 
 import Debug.Trace
 
+runScript = [
+        Or 'E' 'J',
+        Or 'H' 'J',
+        Or 'B' 'T',
+        And 'C' 'T',
+        Not 'T' 'T',
+        And 'T' 'J'
+    ] ++ baseScript Run
+
 run :: String -> String 
 run s = 
     let ints = (map read $ splitOn "," s)
         code = listArray (0, pred $ length ints) ints
         resultsWalk = [runProgram code $ map ord $ render script | script <- walkScripts]
         damageWalk = last $ head $ filter (any (> 1000)) resultsWalk
-    in show damageWalk ++ ", "
+        runResult = runProgram code $ map ord $ render runScript
+    in show damageWalk ++ ", " ++ show (last runResult)
 
 data Instruction = And Char Char | Or Char Char | Not Char Char | Walk | Run
     deriving (Eq, Ord)
