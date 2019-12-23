@@ -1,9 +1,10 @@
-module Util.Intcode(runProgram) where
+module Util.Intcode(runProgram, readParams, paramKinds) where
 
 import Data.Array
 import Data.List.Split
 import Data.Map (Map)
 import qualified Data.Map as Map
+
 
 import Debug.Trace
 
@@ -70,3 +71,4 @@ compute code pos base input =
              in compute code' (pos + 4) base input
         9 -> let [offset] = params in compute code (pos + 2) (base + offset) input
         99 -> []
+

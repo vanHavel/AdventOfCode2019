@@ -1,6 +1,7 @@
 module Days.Day13(run) where
 
-import Util.Intcode
+import Util.Intcode hiding (readParams, paramKinds)
+
 import Data.Array
 import Data.Map(Map)
 import qualified Data.Map as Map
